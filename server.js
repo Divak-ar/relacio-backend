@@ -29,10 +29,20 @@ const socketHandler = require('./sockets');
 
 const app = express();
 const server = createServer(app);
+
+// CORS configuration - handle multiple origins
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:8080',
+  'https://relacio-flow-verse.vercel.app',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
-    credentials: true
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"]
   }
 });
 
@@ -42,8 +52,19 @@ connectDB();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:3000",
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "x-requested-with"]
 }));
 
 // Rate limiting
