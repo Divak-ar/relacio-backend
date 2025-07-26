@@ -1,13 +1,16 @@
-const redis = require('redis');
+// const redis = require('redis'); // Redis disabled - using in-memory fallback
 const Subscription = require('../models/Subscription');
-const { RATE_LIMIT_CONSTANTS, REDIS_KEYS } = require('../constants');
+const { RATE_LIMIT_CONSTANTS } = require('../constants'); // REDIS_KEYS removed
 
 class RateLimitService {
   constructor() {
+    // Redis disabled - using in-memory fallback for development
     this.redisClient = null;
-    this.initRedis();
+    console.log('⚠️  Redis disabled - using in-memory fallback');
+    // this.initRedis(); // Redis initialization disabled
   }
 
+  /* Redis initialization method - disabled for development
   async initRedis() {
     try {
       // Redis disabled for development - no Redis server running
@@ -26,13 +29,14 @@ class RateLimitService {
 
       await this.redisClient.connect();
       console.log('Redis connected successfully');
-      */
+      *//*
     } catch (error) {
       console.error('Redis connection failed:', error);
       // Fallback to in-memory storage for development
       this.redisClient = null;
     }
   }
+  */
 
   async checkVideoCallLimit(userId) {
     return this.checkFeatureLimit(userId, 'videoCalls');
@@ -79,12 +83,14 @@ class RateLimitService {
 
       await subscription.incrementUsage(featureType);
 
-      // Also update Redis cache if available
+      // Redis cache update disabled for development
+      /*
       if (this.redisClient) {
         const key = REDIS_KEYS.RATE_LIMIT[featureType.toUpperCase()](userId);
         const current = await this.redisClient.get(key) || 0;
         await this.redisClient.setEx(key, 86400, parseInt(current) + 1); // 24 hours TTL
       }
+      */
 
       return true;
     } catch (error) {

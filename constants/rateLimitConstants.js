@@ -65,7 +65,7 @@ const RATE_LIMIT_CONSTANTS = {
   }
 };
 
-// Redis Keys for Rate Limiting
+/* Redis Keys for Rate Limiting - Disabled for development
 const REDIS_KEYS = {
   RATE_LIMIT: {
     VIDEO_CALLS: (userId) => `rate_limit:video_calls:${userId}`,
@@ -81,8 +81,9 @@ const REDIS_KEYS = {
   ONLINE_USERS: 'online_users',
   BLACKLISTED_TOKENS: (tokenId) => `blacklisted_token:${tokenId}`
 };
+*/
 
 module.exports = {
-  RATE_LIMIT_CONSTANTS,
-  REDIS_KEYS
+  RATE_LIMIT_CONSTANTS
+  // REDIS_KEYS // Disabled for development
 };
