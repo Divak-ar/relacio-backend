@@ -297,6 +297,105 @@ router.post('/upload-media',
   }
 );
 
+// @desc    Send media message
+// @route   POST /api/chat/send-media-message
+// @access  Private
+router.post('/send-media-message',
+  authenticate,
+  requireEmailVerification,
+  requireProfileCompletion,
+  messageRateLimit,
+  uploadChatFile('media'),
+  async (req, res, next) => {
+    try {
+      const { conversationId, isDisappearing = false, disappearTime = 24 } = req.body;
+      const userId = req.user.id;
+
+      if (!req.file) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: 'No media file provided'
+        });
+      }
+
+      // Verify conversation exists and user is participant
+      const conversation = await Conversation.findById(conversationId);
+      if (!conversation) {
+        return res.status(HTTP_STATUS.NOT_FOUND).json({
+          success: false,
+          message: 'Conversation not found'
+        });
+      }
+
+      if (!conversation.participants.includes(userId)) {
+        return res.status(HTTP_STATUS.FORBIDDEN).json({
+          success: false,
+          message: 'Access denied to this conversation'
+        });
+      }
+
+      // Upload to Cloudinary
+      const uploadResult = await CloudinaryService.uploadImage(
+        req.file.buffer,
+        'chat',
+        `${userId}_${Date.now()}`
+      );
+
+      // Determine message type based on file type
+      const messageType = req.file.mimetype.startsWith('image/') ? 'image' : 'file';
+
+      // Create message with media
+      const messageData = {
+        conversationId,
+        senderId: userId,
+        content: messageType === 'image' ? 'Sent an image' : `Sent a file: ${req.file.originalname}`,
+        type: messageType,
+        fileName: req.file.originalname,
+        fileUrl: uploadResult.secure_url,
+        isDisappearing
+      };
+
+      // Set expiry for disappearing messages
+      if (isDisappearing) {
+        messageData.expiresAt = new Date(Date.now() + disappearTime * 60 * 60 * 1000);
+        messageData.disappearTime = disappearTime;
+      }
+
+      const message = new Message(messageData);
+      await message.save();
+
+      // Update conversation's last message
+      conversation.lastMessage = message._id;
+      conversation.lastMessageAt = new Date();
+      await conversation.save();
+
+      // Populate sender info
+      await message.populate('senderId', 'name');
+
+      // Send notification to other participant
+      const otherParticipantId = conversation.participants.find(
+        id => id.toString() !== userId
+      );
+
+      await NotificationService.createNotification(otherParticipantId, 'message', {
+        title: 'New Message',
+        message: `${req.user.name} sent you a ${messageType}`,
+        fromUserId: userId
+      });
+
+      res.status(HTTP_STATUS.CREATED).json({
+        success: true,
+        message: 'Media message sent successfully',
+        data: {
+          message
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // @desc    Mark conversation messages as read
 // @route   PUT /api/chat/mark-read/:conversationId
 // @access  Private
