@@ -62,6 +62,26 @@ app.use('/api/videocall', videocallRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 
+// Root route for API info
+app.get('/', (req, res) => {
+  res.status(200).json({
+    name: 'Relacio API',
+    version: '1.0.0',
+    description: 'Backend API for Relacio dating application',
+    status: 'active',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      profile: '/api/profile',
+      discovery: '/api/discovery',
+      chat: '/api/chat',
+      videocall: '/api/videocall',
+      notifications: '/api/notifications'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
